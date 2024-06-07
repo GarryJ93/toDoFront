@@ -9,30 +9,36 @@ import { Task } from '../models/task';
 })
 export class TaskService {
   private taskUrl: string;
-  public tasksList = new BehaviorSubject<Task[]>([]);
-  tasksList$ = this.tasksList.asObservable();
+  
+  
 
   constructor(private http: HttpClient) {
     this.taskUrl = 'http://localhost:8080/api/task';
   }
 
-  public findAll(): Observable<Task[]> {
-    return this.http
-      .get<Task[]>(this.taskUrl)
-      .pipe(tap((tasks) => this.tasksList.next(tasks)));
+  public sortByBoolean(taskArray: Task[]) : Task[] {
+    taskArray = taskArray.sort(function (a, b) {
+      return a.done > b.done ? 0 : a ? -1 : 0;
+    });
+    return taskArray
   }
 
-  public changeState(id: number) {
-    return this.http.patch(`${this.taskUrl}/${id}`, null, {
-      responseType: 'text' as 'json',
+  public findAll(): Observable<Task[]> {
+    return this.http
+      .get<Task[]>(this.taskUrl);
+  }
+
+  public changeState(id: number) : Observable<Task[]> {
+    return this.http.patch<Task[]>(`${this.taskUrl}/${id}`, null, {
+      responseType: 'json',
     });
   }
 
-  public changeTitle(id: number, newTitle: string) {
-    return this.http.patch(
+  public changeTitle(id: number, newTitle: string) : Observable<Task[]> {
+    return this.http.patch<Task[]>(
       `http://localhost:8080/api/title/${id}`,
       { title: newTitle },
-      { responseType: 'text' as 'json' }
+      { responseType: 'json' }
     );
   }
 

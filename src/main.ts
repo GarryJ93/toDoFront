@@ -1,9 +1,12 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
-import { defineCustomElements } from 'wcs-core/loader';
+import { defineCustomElements, applyPolyfills } from 'wcs-core/loader';
 
-defineCustomElements();
+
+applyPolyfills().then(() => {
+  defineCustomElements();
+});
 
 bootstrapApplication(AppComponent, appConfig)
   .catch((err) => console.error(err));
