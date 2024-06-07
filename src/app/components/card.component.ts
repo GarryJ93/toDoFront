@@ -93,14 +93,11 @@ import { log } from 'node:console';
 export class CardComponent {
   @Input() task!: Task;
   @Input() tasks!: Task[];
-  updatedTasks!: Task[];
   @Output() tasksChange: EventEmitter<Task[]> = new EventEmitter();
 
   constructor(private taskService: TaskService) {}
+  
 
-  ngOnInit() {
-    this.tasksChange.emit(this.tasks);
-  }
 
   onChangeState(id: number) {
     this.taskService.changeState(id).subscribe({
@@ -120,25 +117,25 @@ export class CardComponent {
       this.taskService.changeTitle(id, newTitle).subscribe({
         next: (response: Task[]) => {
           console.log(response);
-          this.updatedTasks = response.map((task) =>
+          this.tasks = response.map((task) =>
             task.id === id
               ? { ...task, title: newTitle, isEditing: false }
               : { ...task, isEditing: false }
           );
-          console.log(this.updatedTasks);
           this.task = { ...this.task, title: newTitle, isEditing: false };
-          this.tasksChange.emit(this.updatedTasks);
+          this.tasksChange.emit(this.tasks);
         },
       });
     }
   }
 
   onDeleteTask(id: number) {
+    
     this.taskService.deleteTask(id).subscribe({
       next: () => {
-        const updatedTasks = this.tasks.filter((task: Task) => task.id !== id);
-        this.tasksChange.emit(updatedTasks);
+        this.tasks = [...this.tasks.filter((task) => task.id !== id)];
+        this.tasksChange.emit(this.tasks);
       },
-    });
+    })};
   }
-}
+

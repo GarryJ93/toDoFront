@@ -42,9 +42,9 @@ export class TaskService {
     );
   }
 
-  public deleteTask(id: number) {
-    return this.http.delete(`${this.taskUrl}/${id}`, {
-      responseType: 'text' as 'json',
+  public deleteTask(id: number) : Observable<Task> {
+    return this.http.delete<Task>(`${this.taskUrl}/${id}`, {
+      responseType: 'json',
     });
   }
 

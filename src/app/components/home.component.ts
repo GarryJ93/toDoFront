@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, DoCheck, OnInit } from '@angular/core';
 import { TaskService } from '../service/task.service';
 import { Task } from '../models/task';
 import { CommonModule } from '@angular/common';
@@ -6,7 +6,7 @@ import { AddTaskComponent } from './add-task.component';
 import { RouterLink } from '@angular/router';
 import { WcsAngularModule } from 'wcs-angular';
 import { CardComponent } from './card.component';
-
+import { BehaviorSubject, Observable } from 'rxjs';
 
 @Component({
   selector: 'app-home',
@@ -24,36 +24,28 @@ import { CardComponent } from './card.component';
     <wcs-button class="wcs-primary btn-add" shape="round" [routerLink]="'/add'"
       >Ajouter une tâche</wcs-button
     >
-    <div style="min-height: 200px">
-      <label>Voir mes tâches</label>
-      <select
-        id="theselect"
-        size="m"
-        value="1"
-        name="The select"
-        (change)="onFilter($event)"
-      >
-        <option value="1" chip-background-color="var(--wcs-pink)">
-          Toutes
-        </option>
-        <option
-          value="2"
-          chip-background-color="var(--wcs-yellow)"
-          chip-color="var(--wcs-black)"
+
+    <div>
+      <wcs-label class="select-name">Voir mes tâches : </wcs-label>
+      <div>
+        <select
+          id="theselect"
+          size="m"
+          name="The select"
+          (change)="onFilter($event)"
         >
-          En attente
-        </option>
-        <option value="3" chip-background-color="var(--wcs-red)">
-          Complétées
-        </option>
-      </select>
+          <option value="1">Toutes</option>
+          <option value="2">En attente</option>
+          <option value="3">Complétées</option>
+        </select>
+      </div>
     </div>
     <div class="cards">
-      @for(task of tasksToDisplay; track task) {
+      @for(task of tasksToDisplay$ | async; track task.id) {
       <app-card
         class="card"
         [task]="task"
-        [(tasks)]="tasksUpdated"
+        [(tasks)]="tasks"
         draggable="true"
       ></app-card>
       } @empty {
@@ -73,6 +65,14 @@ import { CardComponent } from './card.component';
   .btn-add {
     margin: 1em;
   }
+
+  select {
+    width: 50%;
+  }
+
+  .select-name {
+    margin: 0.2em;
+  }
   
   .cards {
     display: flex;
@@ -80,7 +80,6 @@ import { CardComponent } from './card.component';
     justify-content: space-around;
     flex-wrap:wrap ;
     padding: 2em;
-    margin-top: -10em;
   }
 
   .card {
@@ -102,26 +101,30 @@ import { CardComponent } from './card.component';
   }
   `,
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, DoCheck {
   tasks!: Task[];
   tasksToDisplay!: Task[];
-  tasksUpdated!: Task[];
+  private tasksToDisplaySubject: BehaviorSubject<Task[]> = new BehaviorSubject<
+    Task[]
+  >([]);
+  tasksToDisplay$: Observable<Task[]> =
+    this.tasksToDisplaySubject.asObservable();
+  currentFilter: string = '1';
+  filtered: boolean = false;
+  tasksDone!: Task[];
+  tasksUndone!: Task[];
   constructor(private taskService: TaskService) {}
 
   ngOnInit() {
     this.taskService.findAll().subscribe({
       next: (response) => {
-        
         this.tasks = response.map((task) => ({
           ...task,
           isEditing: false,
         }));
-
-        
+        this.taskService.sortByBoolean(this.tasks);
         this.tasksToDisplay = [...this.tasks];
-
-       
-        this.taskService.sortByBoolean(this.tasksToDisplay);
+        this.updateTasksToDisplay(this.tasksToDisplay);
       },
       error: (err) => {
         console.error('Error fetching tasks:', err);
@@ -130,48 +133,57 @@ export class HomeComponent implements OnInit {
   }
 
   ngDoCheck() {
-    if (this.tasksUpdated) {
-      this.taskService.sortByBoolean(this.tasksUpdated!);
-      this.tasks = [...this.tasksUpdated];
+    if (this.tasks) {
+      const tasksDone = this.tasks.filter((task) => task.done);
+      const tasksUndone = this.tasks.filter((task) => !task.done);
+      if (
+        this.tasksToDisplay &&
+        this.tasks.length < this.tasksToDisplay.length && !this.filtered
+      ) {
+          this.updateTasksToDisplay(this.tasks);
+          this.onSelect(this.currentFilter);
+        } 
+      if (
+        tasksDone.length <
+        this.tasksToDisplay.filter((task) => task.done).length
+      ) {
+        this.updateTasksToDisplay(tasksDone);
+        this.onSelect(this.currentFilter);
+      } else if (
+        tasksUndone.length <
+        this.tasksToDisplay.filter((task) => !task.done).length
+      ) {
+        this.updateTasksToDisplay(tasksUndone);
+        this.onSelect(this.currentFilter);
+      }
     }
   }
 
   onFilter(e: Event) {
-    const target = e.target as HTMLSelectElement;
-    console.log(target.value);
-    if (this.tasksUpdated) {
-      this.tasksToDisplay = [...this.tasksUpdated];
-      this.onSelect(target.value);
-    }
-    if (!this.tasksUpdated) {
-      this.tasksToDisplay = [...this.tasks];
-      this.onSelect(target.value);
-    }
-      
+    const target = e.target as HTMLWcsSelectOptionElement;
+    this.updateTasksToDisplay(this.tasks);
+    this.onSelect(target.value);
   }
-  
+
   onSelect(value: string) {
-     if (value == '1') {
-       this.taskService.sortByBoolean(this.tasksToDisplay);
-     }
-     if (value == '2') {
-       this.tasksToDisplay = [
-         ...this.tasks.filter((task) => task.done === false),
-       ];
-     }
-     if (value == '3') {
-       this.tasksToDisplay = [
-         ...this.tasks.filter((task) => task.done === true),
-       ];
-       
+    this.tasksToDisplay = [...this.tasks];
+    this.currentFilter = value;
+    if (value === '1') {
+      this.filtered = false;
+      this.taskService.sortByBoolean(this.tasksToDisplay);
     }
-    console.log(this.tasksToDisplay);
-    return this.tasksToDisplay;
+    if (value === '2') {
+      this.filtered = true;
+      this.tasksToDisplay = [...this.tasks.filter((task) => !task.done)];
+    }
+    if (value === '3') {
+      this.filtered = true;
+      this.tasksToDisplay = [...this.tasks.filter((task) => task.done)];
+    }
+    this.updateTasksToDisplay(this.tasksToDisplay);
   }
+
+  private updateTasksToDisplay(tasks: Task[]) {
+    this.tasksToDisplaySubject.next(tasks);
   }
-
-
- 
-
-  
-
+}
