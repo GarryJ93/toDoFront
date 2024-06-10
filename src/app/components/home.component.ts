@@ -7,6 +7,8 @@ import { RouterLink } from '@angular/router';
 import { WcsAngularModule } from 'wcs-angular';
 import { CardComponent } from './card.component';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { log } from 'node:console';
+import { WcsSelectCustomEvent } from 'wcs-core';
 
 @Component({
   selector: 'app-home',
@@ -26,19 +28,21 @@ import { BehaviorSubject, Observable } from 'rxjs';
     >
 
     <div>
-      <wcs-label class="select-name">Voir mes tâches : </wcs-label>
-      <div>
-        <select
+      <wcs-form-field>
+        <wcs-label class="select-name">Voir mes tâches : </wcs-label>
+        <wcs-select
+          ngSkipHydration
           id="theselect"
           size="m"
+          value="1"
           name="The select"
-          (change)="onFilter($event)"
+          (wcsSelectOptionClick)="onFilter($event)"
         >
-          <option value="1">Toutes</option>
-          <option value="2">En attente</option>
-          <option value="3">Complétées</option>
-        </select>
-      </div>
+          <wcs-select-option value="1">Toutes</wcs-select-option>
+          <wcs-select-option value="2">En attente</wcs-select-option>
+          <wcs-select-option value="3">Complétées</wcs-select-option>
+        </wcs-select>
+      </wcs-form-field>
     </div>
     <div class="cards">
       @for(task of tasksToDisplay$ | async; track task.id) {
@@ -46,7 +50,6 @@ import { BehaviorSubject, Observable } from 'rxjs';
         class="card"
         [task]="task"
         [(tasks)]="tasks"
-        draggable="true"
       ></app-card>
       } @empty {
       <div>Vous n'avez actuellement aucune tâche de prévue.</div>
@@ -138,11 +141,12 @@ export class HomeComponent implements OnInit, DoCheck {
       const tasksUndone = this.tasks.filter((task) => !task.done);
       if (
         this.tasksToDisplay &&
-        this.tasks.length < this.tasksToDisplay.length && !this.filtered
+        this.tasks.length < this.tasksToDisplay.length &&
+        !this.filtered
       ) {
-          this.updateTasksToDisplay(this.tasks);
-          this.onSelect(this.currentFilter);
-        } 
+        this.updateTasksToDisplay(this.tasks);
+        this.onSelect(this.currentFilter);
+      }
       if (
         tasksDone.length <
         this.tasksToDisplay.filter((task) => task.done).length
@@ -160,7 +164,7 @@ export class HomeComponent implements OnInit, DoCheck {
   }
 
   onFilter(e: Event) {
-    const target = e.target as HTMLWcsSelectOptionElement;
+    const target = e.target as HTMLWcsSelectElement;
     this.updateTasksToDisplay(this.tasks);
     this.onSelect(target.value);
   }

@@ -3,7 +3,6 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { WcsAngularModule } from 'wcs-angular';
 import { TaskService } from '../service/task.service';
 import { Task } from '../models/task';
-import { log } from 'node:console';
 
 @Component({
   selector: 'app-card',

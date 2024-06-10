@@ -48,8 +48,9 @@ export class AddTaskComponent {
     this.taskService.addTask(newTask).subscribe({
       next: (response) => {
         console.log(response);
-        this.router.navigate(['/home']);
       },
-    });}
+    });
+      this.router.navigate(['/home']);
+    }
   }
 }
